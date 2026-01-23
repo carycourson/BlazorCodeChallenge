@@ -6,20 +6,31 @@
 <h3>FizzBuzz Challenge</h3>
 
 <div class="row my-3">
-    <div class="col-md-4">
+    <div class="col-md-2">
         <label>Check numbers up to:</label>
         <input type="number" class="form-control" @bind="Limit" />
     </div>
-    <div class="col-md-4">
+
+    <div class="col-md-2">
         <label>Divisor 1: </label>
         <input type="number" class="form-control" @bind="Divisor1" />
     </div>
-    <div class="col-md-4">
+    <div class="col-md-2">
+        <label>Phrase 1: </label>
+        <input type="text" class="form-control" @bind="Phrase1" />
+    </div>
+
+    <div class="col-md-2">
         <label>Divisor 2: </label>
         <input type="number" class="form-control" @bind="Divisor2" />
     </div>
-    <div class="col-md-4">
-        <button class="btn btn-primary" @onclick="RunLoop">Run</button>
+    <div class="col-md-2">
+        <label>Phrase 2: </label>
+        <input type="text" class="form-control" @bind="Phrase2" />
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary btn-align-end" @onclick="RunLoop">Run</button>
     </div>
 </div>
 
@@ -41,6 +52,13 @@
     // --- Accept input for the divisors
     private int? Divisor1 { get; set; } = 3;
     private int? Divisor2 { get; set; } = 5;
+
+    // These are to meet Additional Requirement 2:
+    // --- Accept input for the phrases
+    private string? Phrase1 { get; set; } = "fizz";
+    private string? Phrase2 { get; set; } = "buzz";
+
+
     private List<string> Output { get; set; } = new();
 
     private void RunLoop()
@@ -63,9 +81,9 @@
 
         for (int i = 0; i <= Limit; i++)
         {
-            if (i % Divisor1 == 0 && i % Divisor2 == 0) Output.Add($"{i}: fizzbuzz");
-            else if (i % Divisor1 == 0) Output.Add($"{i}: fizz");
-            else if (i % Divisor2 == 0) Output.Add($"{i}: buzz");
+            if (i % Divisor1 == 0 && i % Divisor2 == 0) Output.Add($"{i}: " + Phrase1 + Phrase2);
+            else if (i % Divisor1 == 0) Output.Add($"{i}: " + Phrase1);
+            else if (i % Divisor2 == 0) Output.Add($"{i}: " + Phrase2);
             else Output.Add($"{i}");
         }
     }
