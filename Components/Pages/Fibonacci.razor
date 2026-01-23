@@ -1,0 +1,46 @@
+@page "/fibonacci"
+@rendermode InteractiveServer
+
+<PageTitle>Fibonacci Sequence</PageTitle>
+
+<h3>Fibonacci Sequence Challenge</h3>
+
+<div class="row my-3">
+    <div class="col-md-2">
+        <label>Run numbers up to:</label>
+        <input type="number" class="form-control" @bind="Limit" />
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary btn-align-end" @onclick="RunLoop">Run</button>
+    </div>
+</div>
+
+@if (Output.Count > 0)
+{
+    <ul class="list-group mt-3">
+        @foreach (var item in Output)
+        {
+            <li class="list-group-item">@item</li>
+        }
+    </ul>
+}
+
+@code {
+    private int Limit { get; set; } = 6;
+
+    private List<string> Output { get; set; } = new List<string>();
+
+    private void RunLoop()
+    {
+        Output.Clear();
+
+        int a = 1;
+        int b = 1;
+        for (int i = 0; i < Limit; i++)
+        {
+            Output.Add(a.ToString());
+            (a,b) = (b, a + b);
+        }
+    }
+}
