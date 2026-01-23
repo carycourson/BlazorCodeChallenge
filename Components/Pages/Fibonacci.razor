@@ -8,7 +8,7 @@
 <div class="row my-3">
     <div class="col-md-2">
         <label>Run numbers up to:</label>
-        <input type="number" class="form-control" @bind="Limit" />
+        <input type="number" class="form-control" @bind="x" />
     </div>
 
     <div class="col-md-2 d-flex align-items-end">
@@ -27,7 +27,7 @@
 }
 
 @code {
-    private int Limit { get; set; } = 6;
+    private int? x { get; set; } = 6;
 
     private List<string> Output { get; set; } = new List<string>();
 
@@ -35,9 +35,15 @@
     {
         Output.Clear();
 
+        if (x == null || x <= 0)
+        {
+            Output.Add("Please enter a valid positive integer for X value [ x > 0].");
+            return;
+        }
+
         int a = 1;
         int b = 1;
-        for (int i = 0; i < Limit; i++)
+        for (int i = 0; i < x; i++)
         {
             Output.Add(a.ToString());
             (a,b) = (b, a + b);
