@@ -10,10 +10,19 @@
         <label>Check numbers up to:</label>
         <input type="number" class="form-control" @bind="Limit" />
     </div>
-    <div class="col-md-4 d-flex align-items-end">
+    <div class="col-md-4">
+        <label>Divisor 1: </label>
+        <input type="number" class="form-control" @bind="Divisor1" />
+    </div>
+    <div class="col-md-4">
+        <label>Divisor 2: </label>
+        <input type="number" class="form-control" @bind="Divisor2" />
+    </div>
+    <div class="col-md-4">
         <button class="btn btn-primary" @onclick="RunLoop">Run</button>
     </div>
 </div>
+
 
 @if (Output.Count > 0)
 {
@@ -27,16 +36,36 @@
 
 @code {
     private int Limit { get; set; } = 100;
+
+    // These are to meet Additional Requirement 1:
+    // --- Accept input for the divisors
+    private int? Divisor1 { get; set; } = 3;
+    private int? Divisor2 { get; set; } = 5;
     private List<string> Output { get; set; } = new();
 
     private void RunLoop()
     {
         Output.Clear();
+
+        // Check and validate user input (Requirement 1)
+        if (Divisor1 == null || Divisor2 == null)
+        {
+            // Validation error
+            Output.Add("Error: You must supply a value for both divisors.");
+            return;
+        }
+        if (Divisor1 == 0 || Divisor2 == 0)
+        {
+            // Math error
+            Output.Add("Error: Divisors cannot be zero.");
+            return;
+        }        
+
         for (int i = 0; i <= Limit; i++)
         {
-            if (i % 3 == 0 && i % 5 == 0) Output.Add($"{i}: fizzbuzz");
-            else if (i % 3 == 0) Output.Add($"{i}: fizz");
-            else if (i % 5 == 0) Output.Add($"{i}: buzz");
+            if (i % Divisor1 == 0 && i % Divisor2 == 0) Output.Add($"{i}: fizzbuzz");
+            else if (i % Divisor1 == 0) Output.Add($"{i}: fizz");
+            else if (i % Divisor2 == 0) Output.Add($"{i}: buzz");
             else Output.Add($"{i}");
         }
     }
