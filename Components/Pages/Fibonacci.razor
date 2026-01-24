@@ -1,4 +1,5 @@
 @page "/fibonacci"
+@using System.Numerics
 @rendermode InteractiveServer
 
 <PageTitle>Fibonacci Sequence</PageTitle>
@@ -69,7 +70,7 @@
             int index1 = i - y.Value;
             int index2 = i - z.Value;
 
-            Output.Add((index1 < 0 || index2 < 0) ? "1" : (int.Parse(Output[index1]) + int.Parse(Output[index2])).ToString());
+            Output.Add((index1 < 0 || index2 < 0) ? "1" : (BigInteger.Parse(Output[index1]) + BigInteger.Parse(Output[index2])).ToString());
         }
     }
 }
