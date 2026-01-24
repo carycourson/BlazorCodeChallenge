@@ -1,0 +1,138 @@
+@page "/fizzonacci"
+@using System.Numerics
+@rendermode InteractiveServer
+
+<PageTitle>Fizz-onacci</PageTitle>
+
+<h3>FizzBuzz + Fibonacci Challenge</h3>
+
+<div class="row my-3">
+    <div class="col-md-2">
+        <label>Run numbers up to:</label>
+        <input type="number" class="form-control" @bind="x" />
+    </div>
+</div>
+<div class="row my-3">
+    <div class="col-md-2">
+        <label>Divisor 1: </label>
+        <input type="number" class="form-control" @bind="Divisor1" />
+    </div>
+    <div class="col-md-2">
+        <label>Phrase 1: </label>
+        <input type="text" class="form-control" @bind="Phrase1" />
+    </div>
+
+    <div class="col-md-2">
+        <label>Divisor 2: </label>
+        <input type="number" class="form-control" @bind="Divisor2" />
+    </div>
+    <div class="col-md-2">
+        <label>Phrase 2: </label>
+        <input type="text" class="form-control" @bind="Phrase2" />
+    </div>
+</div>
+<div class="row my-3">
+    <div class="col-md-2">
+        <label>Y Value:</label>
+        <input type="number" class="form-control" @bind="y" />
+    </div>
+    <div class="col-md-2">
+        <label>Z Value:</label>
+        <input type="number" class="form-control" @bind="z" />
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary btn-align-end" @onclick="RunLoop">Run</button>
+    </div>
+</div>
+
+@if (Output.Count > 0)
+{
+    <ul class="list-group mt-3">
+        @foreach (var item in Output)
+        {
+            <li class="list-group-item">@item</li>
+        }
+    </ul>
+}
+
+@code {
+    private int? x { get; set; } = 6;
+    private int? y { get; set; } = 1;
+    private int? z { get; set; } = 2;
+    private int? Divisor1 { get; set; } = 3;
+    private int? Divisor2 { get; set; } = 5;
+    private string? Phrase1 { get; set; } = "fizz";
+    private string? Phrase2 { get; set; } = "buzz";
+
+    private List<string> Output { get; set; } = new List<string>();
+    private List<BigInteger> FibonacciSequence { get; set; } = new List<BigInteger>();
+
+    private void RunLoop()
+    {
+        Output.Clear();
+        FibonacciSequence.Clear();
+
+        // Error checking
+        if (x == null || x <= 0)
+        {
+            Output.Add("Please enter a valid positive integer for X value [ x > 0].");
+            return;
+        }
+        if (y == null || y <= 0)
+        {
+            Output.Add("Please enter a valid positive integer for Y value [ y > 0].");
+            return;
+        }
+        if (z == null || z <= 0)
+        {
+            Output.Add("Please enter a valid positive integer for Z value [ z > 0].");
+            return;
+        }
+        if (Phrase1 == null || Phrase1.Trim() == "")
+        {
+            Phrase1 = "fizz";
+        }
+        if (Phrase2 == null || Phrase2.Trim() == "")
+        {
+            Phrase2 = "buzz";
+        }
+       if (Divisor1 == null || Divisor2 == null)
+        {
+            Output.Add("Error: You must supply a value for both divisors.");
+            return;
+        }
+        if (Divisor1 == 0 || Divisor2 == 0)
+        {
+            Output.Add("Error: Divisors cannot be zero.");
+            return;
+        }   
+
+        for (int i = 0; i < x.Value; i++)
+        {
+            // Calculate the Fibonacci Value
+            int index1 = i - y.Value;
+            int index2 = i - z.Value;
+            BigInteger currentVal = (index1 < 0 || index2 < 0) ? 1 : FibonacciSequence[index1] + FibonacciSequence[index2];
+            FibonacciSequence.Add(currentVal);
+
+            // Perform FizzBuzz Check on currentVal
+            if (currentVal % Divisor1 == 0 && currentVal % Divisor2 == 0) 
+            {
+                Output.Add(Phrase1 + Phrase2);
+            }
+            else if (currentVal % Divisor1 == 0) 
+            {
+                Output.Add(Phrase1);
+            }
+            else if (currentVal % Divisor2 == 0) 
+            {
+                Output.Add(Phrase2);
+            }
+            else 
+            {
+                Output.Add(currentVal.ToString());
+            }
+        }
+    }
+}

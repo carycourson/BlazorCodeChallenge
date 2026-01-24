@@ -72,10 +72,4 @@
             Output.Add((index1 < 0 || index2 < 0) ? "1" : (int.Parse(Output[index1]) + int.Parse(Output[index2])).ToString());
         }
     }
-
-    private int indexNum(int currentIndex, int offset)
-    {
-        int newIndex = currentIndex - offset;
-        return newIndex < 0 ? 0 : newIndex;
-    }
 }
