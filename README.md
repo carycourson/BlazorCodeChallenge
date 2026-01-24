@@ -1,5 +1,13 @@
 # Coding Challenge
 
+## Solution Overview
+This solution is built using **.NET Version10** and **Blazor Server**.
+
+### Implementation Notes
+**Commit History:** I have structured my commits to correspond with specific stages of the challenge. Please review the commit history to see the incremental development of the features along with final refinements and improvements.
+
+---
+
 Complete the three small applications below. Each application should accept input via a graphical user interface (not a console app).
 
 **Note:** You are free to use any UI or framework of your choice (i.e., React, Vue, WPF, JavaFX). 
