@@ -1,4 +1,5 @@
 @page "/fizzbuzz"
+@using System.Numerics
 @rendermode InteractiveServer
 
 <PageTitle>FizzBuzz</PageTitle>
@@ -8,7 +9,7 @@
 <div class="row my-3">
     <div class="col-md-2">
         <label>Check numbers up to:</label>
-        <input type="number" class="form-control" @bind="Limit" />
+        <input type="number" class="form-control" @bind-value="Limit" />
     </div>
 
     <div class="col-md-2">
@@ -35,23 +36,25 @@
 </div>
 
 
+@* Replace the output list with a virtualized list for better performance with large outputs *@
 @if (Output.Count > 0)
 {
-    <ul class="list-group mt-3">
-        @foreach (var item in Output)
-        {
-            <li class="list-group-item">@item</li>
-        }
-    </ul>
+    <div class="results-container" style="height: 500px; overflow-y: auto; border: 1px solid #ccc;">
+        <Virtualize Items="@Output" Context="result">
+            <div class="result-item" style="height: 30px;">
+                @result
+            </div>
+        </Virtualize>
+    </div>
 }
 
 @code {
-    private int Limit { get; set; } = 100;
+    private long Limit { get; set; } = 100;
 
     // These are to meet Additional Requirement 1:
     // --- Accept input for the divisors
-    private int? Divisor1 { get; set; } = 3;
-    private int? Divisor2 { get; set; } = 5;
+    private long? Divisor1 { get; set; } = 3;
+    private long? Divisor2 { get; set; } = 5;
 
     // These are to meet Additional Requirement 2:
     // --- Accept input for the phrases
@@ -76,14 +79,14 @@
             Output.Add("Error: You must supply a value for both divisors.");
             return;
         }
-        if (Divisor1 == 0 || Divisor2 == 0)
+        if (Divisor1 <= 0 || Divisor2 <= 0)
         {
             // Math error
-            Output.Add("Error: Divisors cannot be zero.");
+            Output.Add("Error: Divisors cannot be less than 1.");
             return;
-        }        
+        }
 
-        for (int i = 0; i <= Limit; i++)
+        for (long i = 0; i <= Limit; i++)
         {
             if (i % Divisor1 == 0 && i % Divisor2 == 0) Output.Add(Phrase1 + Phrase2);
             else if (i % Divisor1 == 0) Output.Add(Phrase1);
