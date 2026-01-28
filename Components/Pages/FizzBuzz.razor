@@ -35,13 +35,17 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
 
 @* Replace the output list with a virtualized list for better performance with large outputs *@
-@if (Output.Count > 0)
+@if (showResults)
 {
     <div class="results-container" style="height: 500px; overflow-y: auto; border: 1px solid #ccc;">
-        <Virtualize Items="@Output" Context="result">
-            <div class="result-item" style="height: 30px;">
+        <Virtualize @ref="Output" ItemsProvider="OutputItems" Context="result">
+            <div class="result-item" >
                 @result
             </div>
         </Virtualize>
@@ -49,6 +53,9 @@
 }
 
 @code {
+    private Virtualize<string> Output;
+    private bool showResults = false;
+    private string? errorMessage;
     private long Limit { get; set; } = 100;
 
     // These are to meet Additional Requirement 1:
@@ -61,14 +68,32 @@
     private string? Phrase1 { get; set; } = "fizz";
     private string? Phrase2 { get; set; } = "buzz";
 
-
-    private List<string> Output { get; set; } = new();
-
-    private void RunLoop()
+    private async ValueTask<ItemsProviderResult<string>> OutputItems(ItemsProviderRequest request)
     {
-        Output.Clear();
+        int windowItemsCount = Math.Min(request.Count, (int)(Limit - request.StartIndex + 1));
+        if (windowItemsCount <= 0)
+        {
+            return new ItemsProviderResult<string>(new List<string>(), 0);
+        }
+        var items = Enumerable.Range(request.StartIndex, windowItemsCount)
+            .Select(i => GetFizzBuzzValue(i))
+            .ToList();
 
-        // Check and validate user input (Requirement 1)
+        return new ItemsProviderResult<string>(items, (int)Limit + 1);
+    }
+
+    private string GetFizzBuzzValue(long i)
+    {
+        if (i % Divisor1 == 0 && i % Divisor2 == 0) return Phrase1 + Phrase2;
+        else if (i % Divisor1 == 0) return Phrase1;
+        else if (i % Divisor2 == 0) return Phrase2;
+        else return $"{i}";
+    }
+
+    private async Task RunLoop()
+    {
+        errorMessage = null;
+
         if (Phrase1 == null || Phrase1.Trim() == "")
             Phrase1 = "fizz";
         if (Phrase2 == null || Phrase2.Trim() == "")
@@ -76,22 +101,19 @@
         if (Divisor1 == null || Divisor2 == null)
         {
             // Validation error
-            Output.Add("Error: You must supply a value for both divisors.");
+            errorMessage = "Error: You must supply a value for both divisors.";
             return;
         }
         if (Divisor1 <= 0 || Divisor2 <= 0)
         {
             // Math error
-            Output.Add("Error: Divisors cannot be less than 1.");
+            errorMessage = "Error: Divisors cannot be less than 1.";
             return;
         }
 
-        for (long i = 0; i <= Limit; i++)
-        {
-            if (i % Divisor1 == 0 && i % Divisor2 == 0) Output.Add(Phrase1 + Phrase2);
-            else if (i % Divisor1 == 0) Output.Add(Phrase1);
-            else if (i % Divisor2 == 0) Output.Add(Phrase2);
-            else Output.Add($"{i}");
-        }
+        // Trigger re-rendering of the Virtualize component
+        showResults = true;
+        if (Output != null)
+            await Output.RefreshDataAsync();
     }
 }
