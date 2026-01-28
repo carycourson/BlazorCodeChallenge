@@ -12,7 +12,6 @@
         <input type="number" class="form-control" @bind="x" />
     </div>
 
-    <!-- Additional Requirement 1 -->
     <div class="col-md-2">
         <label>Y Value:</label>
         <input type="number" class="form-control" @bind="y" />
@@ -56,8 +55,8 @@
         // x has to be arbitrarily capped to avoid performance issues
         if (x > 10000)
         {
-            errorMessage = "Please enter a value of 10,000 or less to ensure a smooth UI experience.";
-            return;
+            errorMessage = "Limiting iterations to 10,000 to ensure a smooth UI experience.";
+            x = 10000;
         }
         // Error checking
         if (x == null || x <= 0)
