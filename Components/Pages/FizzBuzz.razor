@@ -6,15 +6,70 @@
 
 <h3>FizzBuzz Challenge</h3>
 
+<style>
+    .main-layout {
+        display: flex;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        height: 525px;
+    }
+
+    .viewport-container {
+        flex-grow: 1;
+        user-select: none;
+        overflow: hidden;
+    }
+
+    .scrollbar-track {
+        width: 16px;
+        background: #eee;
+        border-left: 1px solid #dee2e6;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .scrollbar-thumb {
+        position: absolute;
+        width: 14px;
+        left: 1px;
+        background: #888;
+        border-radius: 7px;
+        cursor: grab;
+        min-height: 20px;
+        transition: background-color 0.15s ease;
+    }
+
+    .scrollbar-thumb:hover {
+        background: #666;
+    }
+
+    .scrollbar-thumb:active {
+        cursor: grabbing;
+        background: #555;
+    }
+
+    .result-row {
+        padding: 4px 15px;
+        border-bottom: 1px solid #ececec;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        height: 35px;
+    }
+
+    .value-label { font-weight: bold; }
+</style>
+
 <div class="row my-3">
     <div class="col-md-2">
         <label>Check numbers up to:</label>
-        <input type="number" class="form-control" @bind-value="Limit" />
+        <input type="number" class="form-control" @bind-value="LimitInput" />
     </div>
 
     <div class="col-md-2">
         <label>Divisor 1: </label>
-        <input type="number" class="form-control" @bind="Divisor1" />
+        <input type="number" class="form-control" @bind="Divisor1Input" />
     </div>
     <div class="col-md-2">
         <label>Phrase 1: </label>
@@ -23,7 +78,7 @@
 
     <div class="col-md-2">
         <label>Divisor 2: </label>
-        <input type="number" class="form-control" @bind="Divisor2" />
+        <input type="number" class="form-control" @bind="Divisor2Input" />
     </div>
     <div class="col-md-2">
         <label>Phrase 2: </label>
@@ -39,81 +94,153 @@
 {
     <div class="alert alert-danger">@errorMessage</div>
 }
+@if (!string.IsNullOrEmpty(runMessage))
+{
+    <div class="alert alert-success">@runMessage</div>
+}
 
-@* Replace the output list with a virtualized list for better performance with large outputs *@
 @if (showResults)
 {
-    <div class="results-container" style="height: 500px; overflow-y: auto; border: 1px solid #ccc;">
-        <Virtualize @ref="Output" ItemsProvider="OutputItems" Context="result">
-            <div class="result-item" >
-                @result
+    <div class="main-layout">
+        <div class="viewport-container" @onwheel="HandleWheel">
+            @for (BigInteger i = CurrentStart; i < CurrentStart + PageSize && i <= Limit; i++)
+            {
+                <div class="result-row">
+                    <span class="value-label">@GetItemValue(i)</span>
+                </div>
+            }
+        </div>
+        <div class="scrollbar-track" @onclick="HandleTrackClick">
+            <div class="scrollbar-thumb" 
+                 style="top: @(GetThumbTop())px; height: @(GetThumbHeight())px;"
+                 @onclick:stopPropagation="true">
             </div>
-        </Virtualize>
+        </div>
     </div>
 }
 
 @code {
-    private Virtualize<string> Output;
+        // Layout Constants
+    private const int PageSize = 15;
+    private const int TrackHeight = 525;
+    private const int MinThumbHeight = 20;
+
+    // Input Bindings
+    private string LimitInput { get; set; } = "100";
+    private string Divisor1Input { get; set; } = "3";
+    private string Divisor2Input { get; set; } = "5";
+    private string Phrase1 { get; set; } = "fizz";
+    private string Phrase2 { get; set; } = "buzz";
+
+    // Parsed Values
+    private BigInteger Limit;
+    private BigInteger Divisor1;
+    private BigInteger Divisor2;
+
+    // UI State
     private bool showResults = false;
     private string? errorMessage;
-    private long Limit { get; set; } = 100;
+    private string? runMessage;
 
-    // These are to meet Additional Requirement 1:
-    // --- Accept input for the divisors
-    private long? Divisor1 { get; set; } = 3;
-    private long? Divisor2 { get; set; } = 5;
+    // Viewport State
+    private BigInteger CurrentStart { get; set; } = 1;
 
-    // These are to meet Additional Requirement 2:
-    // --- Accept input for the phrases
-    private string? Phrase1 { get; set; } = "fizz";
-    private string? Phrase2 { get; set; } = "buzz";
+    // Returns the maximum valid value for CurrentStart.
+    // When CurrentStart equals this value, the last item (Limit) is visible.
+    private BigInteger MaxStart => Limit > PageSize ? Limit - PageSize + 1 : 1;
 
-    private async ValueTask<ItemsProviderResult<string>> OutputItems(ItemsProviderRequest request)
+    private void HandleWheel(WheelEventArgs e)
     {
-        int windowItemsCount = Math.Min(request.Count, (int)(Limit - request.StartIndex + 1));
-        if (windowItemsCount <= 0)
-        {
-            return new ItemsProviderResult<string>(new List<string>(), 0);
-        }
-        var items = Enumerable.Range(request.StartIndex, windowItemsCount)
-            .Select(i => GetFizzBuzzValue(i))
-            .ToList();
-
-        return new ItemsProviderResult<string>(items, (int)Limit + 1);
+        if (e.DeltaY > 0 && CurrentStart < MaxStart)
+            CurrentStart++;
+        else if (e.DeltaY < 0 && CurrentStart > 1)
+            CurrentStart--;
     }
 
-    private string GetFizzBuzzValue(long i)
+    private void HandleTrackClick(MouseEventArgs e)
     {
-        if (i % Divisor1 == 0 && i % Divisor2 == 0) return Phrase1 + Phrase2;
-        else if (i % Divisor1 == 0) return Phrase1;
-        else if (i % Divisor2 == 0) return Phrase2;
-        else return $"{i}";
+        if (Limit <= PageSize) return;
+
+        double thumbHeight = GetThumbHeight();
+        double availableSpace = TrackHeight - thumbHeight;
+        if (availableSpace <= 0) return;
+
+        // Center thumb on click position, clamped to valid range
+        double targetThumbTop = Math.Clamp(e.OffsetY - (thumbHeight / 2), 0, availableSpace);
+
+        // Convert pixel position to CurrentStart value
+        double ratio = targetThumbTop / availableSpace;
+        BigInteger newStart = 1 + (BigInteger)(ratio * (double)(Limit - PageSize));
+
+        CurrentStart = BigInteger.Clamp(newStart, 1, MaxStart);
     }
 
-    private async Task RunLoop()
+    private double GetThumbHeight()
+    {
+        if (Limit <= 0) return TrackHeight;
+
+        double ratio = Math.Min((double)PageSize / (double)Limit, 1.0);
+        return Math.Max(ratio * TrackHeight, MinThumbHeight);
+    }
+
+    private double GetThumbTop()
+    {
+        if (Limit <= PageSize) return 0;
+
+        double availableSpace = TrackHeight - GetThumbHeight();
+        double ratio = (double)(CurrentStart - 1) / (double)(Limit - PageSize);
+
+        return ratio * availableSpace;
+    }
+
+    private string GetItemValue(BigInteger i)
+    {
+        bool divByFirst = i % Divisor1 == 0;
+        bool divBySecond = i % Divisor2 == 0;
+
+        if (divByFirst && divBySecond)
+            return Phrase1 + Phrase2;
+        if (divByFirst)
+            return Phrase1;
+        if (divBySecond)
+            return Phrase2;
+
+        return i.ToString("N0");
+    }
+
+    private void RunLoop()
     {
         errorMessage = null;
+        runMessage = null;
+        showResults = false;
 
-        if (Phrase1 == null || Phrase1.Trim() == "")
-            Phrase1 = "fizz";
-        if (Phrase2 == null || Phrase2.Trim() == "")
-            Phrase2 = "buzz";
-        if (Divisor1 == null || Divisor2 == null)
+        // Default empty phrases
+        if (string.IsNullOrWhiteSpace(Phrase1)) Phrase1 = "fizz";
+        if (string.IsNullOrWhiteSpace(Phrase2)) Phrase2 = "buzz";
+
+        // Validate Limit
+        if (!BigInteger.TryParse(LimitInput, out Limit) || Limit <= 0)
         {
-            // Validation error
-            errorMessage = "Error: You must supply a value for both divisors.";
-            return;
-        }
-        if (Divisor1 <= 0 || Divisor2 <= 0)
-        {
-            // Math error
-            errorMessage = "Error: Divisors cannot be less than 1.";
+            errorMessage = "Please enter a valid positive integer for Limit value [Limit > 0].";
             return;
         }
 
-        // Trigger re-rendering of the Virtualize component
+        // Validate Divisor1
+        if (!BigInteger.TryParse(Divisor1Input, out Divisor1) || Divisor1 <= 0)
+        {
+            errorMessage = "Please enter a valid positive integer for Divisor 1 value [Divisor > 0].";
+            return;
+        }
+
+        // Validate Divisor2
+        if (!BigInteger.TryParse(Divisor2Input, out Divisor2) || Divisor2 <= 0)
+        {
+            errorMessage = "Please enter a valid positive integer for Divisor 2 value [Divisor > 0].";
+            return;
+        }
+
+        runMessage = $"Running FizzBuzz up to {Limit:N0} with divisors {Divisor1:N0} and {Divisor2:N0}.";
+        CurrentStart = 1;
         showResults = true;
-        if (Output != null)
-            await Output.RefreshDataAsync();
     }
 }
