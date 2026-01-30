@@ -120,7 +120,7 @@
 }
 
 @code {
-        // Layout Constants
+    // Layout Constants
     private const int PageSize = 15;
     private const int TrackHeight = 525;
     private const int MinThumbHeight = 20;
@@ -145,8 +145,6 @@
     // Viewport State
     private BigInteger CurrentStart { get; set; } = 1;
 
-    // Returns the maximum valid value for CurrentStart.
-    // When CurrentStart equals this value, the last item (Limit) is visible.
     private BigInteger MaxStart => Limit > PageSize ? Limit - PageSize + 1 : 1;
 
     private void HandleWheel(WheelEventArgs e)
@@ -165,10 +163,8 @@
         double availableSpace = TrackHeight - thumbHeight;
         if (availableSpace <= 0) return;
 
-        // Center thumb on click position, clamped to valid range
         double targetThumbTop = Math.Clamp(e.OffsetY - (thumbHeight / 2), 0, availableSpace);
 
-        // Convert pixel position to CurrentStart value
         double ratio = targetThumbTop / availableSpace;
         BigInteger newStart = 1 + (BigInteger)(ratio * (double)(Limit - PageSize));
 
@@ -214,25 +210,21 @@
         runMessage = null;
         showResults = false;
 
-        // Default empty phrases
         if (string.IsNullOrWhiteSpace(Phrase1)) Phrase1 = "fizz";
         if (string.IsNullOrWhiteSpace(Phrase2)) Phrase2 = "buzz";
 
-        // Validate Limit
         if (!BigInteger.TryParse(LimitInput, out Limit) || Limit <= 0)
         {
             errorMessage = "Please enter a valid positive integer for Limit value [Limit > 0].";
             return;
         }
 
-        // Validate Divisor1
         if (!BigInteger.TryParse(Divisor1Input, out Divisor1) || Divisor1 <= 0)
         {
             errorMessage = "Please enter a valid positive integer for Divisor 1 value [Divisor > 0].";
             return;
         }
 
-        // Validate Divisor2
         if (!BigInteger.TryParse(Divisor2Input, out Divisor2) || Divisor2 <= 0)
         {
             errorMessage = "Please enter a valid positive integer for Divisor 2 value [Divisor > 0].";

@@ -2,9 +2,64 @@
 @using System.Numerics
 @rendermode InteractiveServer
 
-<PageTitle>Fibonacci Sequence</PageTitle>
+<PageTitle>Fibonacci</PageTitle>
 
-<h3>Fibonacci Sequence Challenge</h3>
+<h3>Fibonacci Challenge</h3>
+
+<style>
+    .main-layout {
+        display: flex;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        height: 525px;
+    }
+
+    .viewport-container {
+        flex-grow: 1;
+        user-select: none;
+        overflow: hidden;
+    }
+
+    .scrollbar-track {
+        width: 16px;
+        background: #eee;
+        border-left: 1px solid #dee2e6;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .scrollbar-thumb {
+        position: absolute;
+        width: 14px;
+        left: 1px;
+        background: #888;
+        border-radius: 7px;
+        cursor: grab;
+        min-height: 20px;
+        transition: background-color 0.15s ease;
+    }
+
+    .scrollbar-thumb:hover {
+        background: #666;
+    }
+
+    .scrollbar-thumb:active {
+        cursor: grabbing;
+        background: #555;
+    }
+
+    .result-row {
+        padding: 4px 15px;
+        border-bottom: 1px solid #ececec;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        height: 35px;
+    }
+
+    .value-label { font-weight: bold; }
+</style>
 
 <div class="row my-3">
     <div class="col-md-2">
@@ -30,58 +85,251 @@
 {
     <div class="alert alert-danger">@errorMessage</div>
 }
+@if (!string.IsNullOrEmpty(runMessage))
+{
+    <div class="alert alert-success">@runMessage</div>
+}
 
-<div class="results-container" style="height: 500px; overflow-y: auto; border: 1px solid #ccc;">
-    <Virtualize Items="@Output" Context="result">
-        <div class="result-item" >
-            @result
+@if (showResults)
+{
+    <div class="main-layout">
+        <div class="viewport-container" @onwheel="HandleWheel">
+            @for (int i = CurrentStart; i < CurrentStart + PageSize && i < FibCache.Count; i++)
+            {
+                <div class="result-row">
+                    <span class="index-label">F(@i):</span>
+                    <span class="value-label">@FibCache[i].ToString("N0")</span>
+                </div>
+            }
         </div>
-    </Virtualize>
-</div>
+        <div class="scrollbar-track" @onclick="HandleTrackClick">
+            <div class="scrollbar-thumb" 
+                 style="top: @(GetThumbTop())px; height: @(GetThumbHeight())px;"
+                 @onclick:stopPropagation="true">
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-    private readonly int MaxIterations = 10000;
-    private int? x { get; set; } = 6;
-    private int? y { get; set; } = 1;
-    private int? z { get; set; } = 2;
+    // Configuration
+    private const long MaxAllowedBytes = 50L * 1024 * 1024 * 1024;  // 50 GB
 
+    // Computed Fibonacci List
+    private List<BigInteger> FibCache = new();
+
+    // Layout Constants
+    private const int PageSize = 15;
+    private const int TrackHeight = 525;
+    private const int MinThumbHeight = 20;
+
+    // Input Bindings
+    private string x { get; set; } = "100";
+    private string y { get; set; } = "1";
+    private string z { get; set; } = "2";
+
+    // Parsed Values
+    private int Limit;
+    private int Y;
+    private int Z;
+
+    // UI State
+    private bool showResults = false;
     private string? errorMessage;
-    private List<string> Output { get; set; } = new List<string>();
+    private string? runMessage;
 
-    private void RunLoop()
+    // Viewport State
+    private int CurrentStart { get; set; } = 0;
+
+    private int MaxStart => Limit > PageSize ? Limit - PageSize + 1 : 0;
+
+    #region Memory Estimation
+    // Uses Newton-Raphson iteration to find the root. - Thank you, Khin!!!
+    private static double CalculateGrowthRate(int y, int z)
     {
-        Output.Clear();
+        if (y == z)
+            return Math.Pow(2, 1.0 / y);
+
+        int m = Math.Max(y, z);
+        int a = m - y;
+        int b = m - z;
+
+        // Newton-Raphson to solve: x^m - x^a - x^b = 0
+        double x = 1.5;
+
+        for (int i = 0; i < 50; i++)
+        {
+            double xm = Math.Pow(x, m);
+            double xa = Math.Pow(x, a);
+            double xb = Math.Pow(x, b);
+
+            double f = xm - xa - xb;
+            double fPrime = m * Math.Pow(x, m - 1)
+                          - a * Math.Pow(x, a - 1)
+                          - b * Math.Pow(x, b - 1);
+
+            if (Math.Abs(fPrime) < 1e-15)
+                break;
+
+            double nextX = x - f / fPrime;
+
+            if (Math.Abs(nextX - x) < 1e-12)
+                break;
+
+            x = nextX;
+        }
+
+        return x;
+    }
+
+    // Estimate memory requirement
+    private static long EstimateMemoryBytes(int limit, int y, int z)
+    {
+        if (limit <= 0) return 0;
+
+        double phi = CalculateGrowthRate(y, z);
+        double log10Phi = Math.Log10(phi);
+
+        const double overheadMultiplier = 1.3;
+        const double bytesPerDigit = 0.415;
+
+        BigInteger n = new BigInteger(limit);
+        BigInteger sumOfIndices = (n * (n + 1)) / 2;
+
+        double coefficient = bytesPerDigit * log10Phi * overheadMultiplier;
+
+        double totalEstimatedBytes = coefficient * (double)sumOfIndices;
+
+        return totalEstimatedBytes > (double)long.MaxValue 
+            ? long.MaxValue 
+            : (long)totalEstimatedBytes;
+    }
+
+    // Calculate the maximum Limit for a given memory budget
+    private static int CalculateMaxLimit(long maxBytes, int y, int z)
+    {
+        if (maxBytes <= 0) return 0;
+
+        double phi = CalculateGrowthRate(y, z);
+        double log10Phi = Math.Log10(phi);
+
+        const double overheadMultiplier = 1.3;
+        const double bytesPerDigit = 0.415;
+
+        double coefficient = bytesPerDigit * log10Phi * overheadMultiplier / 2.0;
+
+        double maxLimit = Math.Sqrt(maxBytes / coefficient);
+
+        return (int)Math.Floor(maxLimit);
+    }
+
+    // Returns human-readable memory string
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+    #endregion
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (e.DeltaY > 0 && CurrentStart < MaxStart)
+            CurrentStart++;
+        else if (e.DeltaY < 0 && CurrentStart > 0)
+            CurrentStart--;
+    }
+
+    private void HandleTrackClick(MouseEventArgs e)
+    {
+        if (Limit <= PageSize) return;
+
+        double thumbHeight = GetThumbHeight();
+        double availableSpace = TrackHeight - thumbHeight;
+        if (availableSpace <= 0) return;
+
+        double targetThumbTop = Math.Clamp(e.OffsetY - (thumbHeight / 2), 0, availableSpace);
+
+        double ratio = targetThumbTop / availableSpace;
+        int newStart = (int)Math.Round(ratio * (Limit - PageSize));
+
+        CurrentStart = Math.Clamp(newStart, 0, MaxStart);
+    }
+
+    private double GetThumbHeight()
+    {
+        if (Limit <= 0) return TrackHeight;
+
+        double ratio = Math.Min((double)PageSize / Limit, 1.0);
+        return Math.Max(ratio * TrackHeight, MinThumbHeight);
+    }
+
+    private double GetThumbTop()
+    {
+        if (Limit <= PageSize) return 0;
+
+        double availableSpace = TrackHeight - GetThumbHeight();
+        double ratio = (double)CurrentStart / (Limit - PageSize);
+
+        return ratio * availableSpace;
+    }
+
+    private async Task RunLoop()
+    {
         errorMessage = null;
+        runMessage = null;
+        showResults = false;
+        FibCache.Clear();
 
-        // x has to be arbitrarily capped to avoid performance issues
-        if (x > MaxIterations)
+        if (!int.TryParse(x, out Limit) || Limit <= 0 || Limit > int.MaxValue)
         {
-            errorMessage = $"Limiting iterations to {MaxIterations} to ensure a smooth UI experience.";
-            x = MaxIterations;
-        }
-        // Error checking
-        if (x == null || x <= 0)
-        {
-            errorMessage = "Please enter a valid positive integer for X value [ x > 0].";
-            return;
-        }
-        if (y == null || y <= 0)
-        {
-            errorMessage = "Please enter a valid positive integer for Y value [ y > 0].";
-            return;
-        }
-        if (z == null || z <= 0)
-        {
-            errorMessage = "Please enter a valid positive integer for Z value [ z > 0].";
+            errorMessage = "Run number must be > 0 and < 2,147,483,647.";
             return;
         }
 
-        for (int i = 0; i < x.Value; i++)
+        if (!int.TryParse(y, out Y) || Y <= 0)
         {
-            int index1 = i - y.Value;
-            int index2 = i - z.Value;
-
-            Output.Add((index1 < 0 || index2 < 0) ? "1" : (BigInteger.Parse(Output[index1].Replace(",","")) + BigInteger.Parse(Output[index2].Replace(",",""))).ToString("N0"));
+            errorMessage = "Please enter a valid positive integer for Y value [Y > 0].";
+            return;
         }
+
+        if (!int.TryParse(z, out Z) || Z <= 0)
+        {
+            errorMessage = "Please enter a valid positive integer for Z value [Z > 0].";
+            return;
+        }
+
+        // Check memory constraints
+        int maxLimit = CalculateMaxLimit(MaxAllowedBytes, Y, Z);
+        long estimatedBytes = EstimateMemoryBytes(Limit, Y, Z);
+
+        if (Limit > maxLimit)
+        {
+            errorMessage = $"Run of {Limit:N0} would require ~{FormatBytes(estimatedBytes)}. " +
+                           $"With Y={Y} and Z={Z}, maximum allowed limit is {maxLimit:N0} " +
+                           $"(~{FormatBytes(MaxAllowedBytes)} budget).";
+            return;
+        }
+
+        runMessage = "Computing sequence...";
+        StateHasChanged();
+        await Task.Delay(1); 
+
+        // Pre-allocate and compute the full sequence without converting to and from strings
+        FibCache.Capacity = Limit + 1;
+
+        for (int i = 0; i <= Limit; i++)
+        {
+            if (i < Y || i < Z)
+                FibCache.Add(1);
+            else
+                FibCache.Add(FibCache[i - Y] + FibCache[i - Z]);
+        }
+
+        CurrentStart = 0;
+        runMessage = $"Computed {Limit:N0} terms of F(x) = F(x-{Y}) + F(x-{Z}). " +
+                     $"Memory used: ~{FormatBytes(estimatedBytes)}.";
+        showResults = true;
     }
 }
