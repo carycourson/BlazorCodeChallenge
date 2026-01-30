@@ -6,6 +6,7 @@
 
 <h3>FizzBuzz Challenge</h3>
 
+#region Style and Layout
 <style>
     .main-layout {
         display: flex;
@@ -89,6 +90,7 @@
         <button class="btn btn-primary btn-align-end" @onclick="RunLoop">Run</button>
     </div>
 </div>
+#endregion
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
@@ -123,10 +125,10 @@
     // Layout Constants
     private const int PageSize = 15;
     private const int TrackHeight = 525;
-    private const int MinThumbHeight = 20;
+    private const int MinThumbHeight = 10;
 
     // Input Bindings
-    private string LimitInput { get; set; } = "100";
+    private string LimitInput { get; set; } = "30";
     private string Divisor1Input { get; set; } = "3";
     private string Divisor2Input { get; set; } = "5";
     private string Phrase1 { get; set; } = "fizz";

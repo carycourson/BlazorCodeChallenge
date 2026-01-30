@@ -6,74 +6,19 @@
 
 <h3>Fibonacci Challenge</h3>
 
-<style>
-    .main-layout {
-        display: flex;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        background-color: #f8f9fa;
-        height: 525px;
-    }
-
-    .viewport-container {
-        flex-grow: 1;
-        user-select: none;
-        overflow: hidden;
-    }
-
-    .scrollbar-track {
-        width: 16px;
-        background: #eee;
-        border-left: 1px solid #dee2e6;
-        position: relative;
-        cursor: pointer;
-    }
-
-    .scrollbar-thumb {
-        position: absolute;
-        width: 14px;
-        left: 1px;
-        background: #888;
-        border-radius: 7px;
-        cursor: grab;
-        min-height: 20px;
-        transition: background-color 0.15s ease;
-    }
-
-    .scrollbar-thumb:hover {
-        background: #666;
-    }
-
-    .scrollbar-thumb:active {
-        cursor: grabbing;
-        background: #555;
-    }
-
-    .result-row {
-        padding: 4px 15px;
-        border-bottom: 1px solid #ececec;
-        font-family: monospace;
-        display: flex;
-        justify-content: space-between;
-        height: 35px;
-    }
-
-    .value-label { font-weight: bold; }
-</style>
-
 <div class="row my-3">
     <div class="col-md-2">
         <label>Run numbers up to:</label>
-        <input type="number" class="form-control" @bind="x" />
+        <input type="number" class="form-control" @bind="limit" />
     </div>
 
     <div class="col-md-2">
-        <label>Y Value:</label>
-        <input type="number" class="form-control" @bind="y" />
+        <label>Offset 1 Value:</label>
+        <input type="number" class="form-control" @bind="offset1" />
     </div>
     <div class="col-md-2">
-        <label>Z Value:</label>
-        <input type="number" class="form-control" @bind="z" />
+        <label>Offset 2 Value:</label>
+        <input type="number" class="form-control" @bind="offset2" />
     </div>
 
     <div class="col-md-2 d-flex align-items-end">
@@ -90,100 +35,66 @@
     <div class="alert alert-success">@runMessage</div>
 }
 
-@if (showResults)
-{
-    <div class="main-layout">
-        <div class="viewport-container" @onwheel="HandleWheel">
-            @for (int i = CurrentStart; i < CurrentStart + PageSize && i < FibCache.Count; i++)
-            {
-                <div class="result-row">
-                    <span class="index-label">F(@i):</span>
-                    <span class="value-label">@FibCache[i].ToString("N0")</span>
-                </div>
-            }
+<div class="results-container" style="height: 500px; overflow-y: auto; border: 1px solid #ccc;">
+    <Virtualize Items="@Output" Context="item" ItemSize="32">
+        <div class="result-item" style="height: 30px; line-height: 30px; white-space: nowrap; overflow-x: auto;">
+            F(@item.Index) = @item.Value.ToString("N0")
         </div>
-        <div class="scrollbar-track" @onclick="HandleTrackClick">
-            <div class="scrollbar-thumb" 
-                 style="top: @(GetThumbTop())px; height: @(GetThumbHeight())px;"
-                 @onclick:stopPropagation="true">
-            </div>
-        </div>
-    </div>
-}
+    </Virtualize>
+</div>
 
 @code {
     // Configuration
-    private const long MaxAllowedBytes = 50L * 1024 * 1024 * 1024;  // 50 GB
+    private const long MaxAllowedBytes = 25L * 1024 * 1024 * 1024;  // 25 GB
 
-    // Computed Fibonacci List
-    private List<BigInteger> FibCache = new();
-
-    // Layout Constants
-    private const int PageSize = 15;
-    private const int TrackHeight = 525;
-    private const int MinThumbHeight = 20;
-
-    // Input Bindings
-    private string x { get; set; } = "100";
-    private string y { get; set; } = "1";
-    private string z { get; set; } = "2";
-
-    // Parsed Values
-    private int Limit;
-    private int Y;
-    private int Z;
-
-    // UI State
-    private bool showResults = false;
     private string? errorMessage;
     private string? runMessage;
-
-    // Viewport State
-    private int CurrentStart { get; set; } = 0;
-
-    private int MaxStart => Limit > PageSize ? Limit - PageSize + 1 : 0;
+    private long limit { get; set; } = 6;
+    private long offset1 { get; set; } = 1;
+    private long offset2 { get; set; } = 2;
+    private List<(int Index, BigInteger Value)> Output = new();
 
     #region Memory Estimation
-    // Uses Newton-Raphson iteration to find the root. - Thank you, Khin!!!
-    private static double CalculateGrowthRate(int y, int z)
+    // Uses Newton-Raphson Iteration to find the root. - Thank you, Khin!!!
+    private static double CalculateGrowthRate(long y, long z)
     {
         if (y == z)
             return Math.Pow(2, 1.0 / y);
 
-        int m = Math.Max(y, z);
-        int a = m - y;
-        int b = m - z;
+        long m = Math.Max(y, z);
+        long a = m - y;
+        long b = m - z;
 
-        // Newton-Raphson to solve: x^m - x^a - x^b = 0
-        double x = 1.5;
+        // Newton-Raphson Iteration to solve: x^m - x^a - x^b = 0
+        double nri = 1.5;
 
         for (int i = 0; i < 50; i++)
         {
-            double xm = Math.Pow(x, m);
-            double xa = Math.Pow(x, a);
-            double xb = Math.Pow(x, b);
+            double xm = Math.Pow(nri, m);
+            double xa = Math.Pow(nri, a);
+            double xb = Math.Pow(nri, b);
 
             double f = xm - xa - xb;
-            double fPrime = m * Math.Pow(x, m - 1)
-                          - a * Math.Pow(x, a - 1)
-                          - b * Math.Pow(x, b - 1);
+            double fPrime = m * Math.Pow(nri, m - 1)
+                          - a * Math.Pow(nri, a - 1)
+                          - b * Math.Pow(nri, b - 1);
 
             if (Math.Abs(fPrime) < 1e-15)
                 break;
 
-            double nextX = x - f / fPrime;
+            double nextX = nri - f / fPrime;
 
-            if (Math.Abs(nextX - x) < 1e-12)
+            if (Math.Abs(nextX - nri) < 1e-12)
                 break;
 
-            x = nextX;
+            nri = nextX;
         }
 
-        return x;
+        return nri;
     }
 
     // Estimate memory requirement
-    private static long EstimateMemoryBytes(int limit, int y, int z)
+    private static long EstimateMemoryBytes(long limit, long y, long z)
     {
         if (limit <= 0) return 0;
 
@@ -206,7 +117,7 @@
     }
 
     // Calculate the maximum Limit for a given memory budget
-    private static int CalculateMaxLimit(long maxBytes, int y, int z)
+    private static long CalculateMaxLimit(long maxBytes, long y, long z)
     {
         if (maxBytes <= 0) return 0;
 
@@ -220,7 +131,7 @@
 
         double maxLimit = Math.Sqrt(maxBytes / coefficient);
 
-        return (int)Math.Floor(maxLimit);
+        return (long)Math.Floor(maxLimit);
     }
 
     // Returns human-readable memory string
@@ -233,103 +144,63 @@
     }
     #endregion
 
-    private void HandleWheel(WheelEventArgs e)
-    {
-        if (e.DeltaY > 0 && CurrentStart < MaxStart)
-            CurrentStart++;
-        else if (e.DeltaY < 0 && CurrentStart > 0)
-            CurrentStart--;
-    }
-
-    private void HandleTrackClick(MouseEventArgs e)
-    {
-        if (Limit <= PageSize) return;
-
-        double thumbHeight = GetThumbHeight();
-        double availableSpace = TrackHeight - thumbHeight;
-        if (availableSpace <= 0) return;
-
-        double targetThumbTop = Math.Clamp(e.OffsetY - (thumbHeight / 2), 0, availableSpace);
-
-        double ratio = targetThumbTop / availableSpace;
-        int newStart = (int)Math.Round(ratio * (Limit - PageSize));
-
-        CurrentStart = Math.Clamp(newStart, 0, MaxStart);
-    }
-
-    private double GetThumbHeight()
-    {
-        if (Limit <= 0) return TrackHeight;
-
-        double ratio = Math.Min((double)PageSize / Limit, 1.0);
-        return Math.Max(ratio * TrackHeight, MinThumbHeight);
-    }
-
-    private double GetThumbTop()
-    {
-        if (Limit <= PageSize) return 0;
-
-        double availableSpace = TrackHeight - GetThumbHeight();
-        double ratio = (double)CurrentStart / (Limit - PageSize);
-
-        return ratio * availableSpace;
-    }
-
     private async Task RunLoop()
     {
         errorMessage = null;
         runMessage = null;
-        showResults = false;
-        FibCache.Clear();
+        Output.Clear();
 
-        if (!int.TryParse(x, out Limit) || Limit <= 0 || Limit > int.MaxValue)
+        if (limit <= 0 || limit > int.MaxValue)
         {
-            errorMessage = "Run number must be > 0 and < 2,147,483,647.";
+            errorMessage = $"Run number must be > 0 and ≤ {int.MaxValue:N0}.";
             return;
         }
 
-        if (!int.TryParse(y, out Y) || Y <= 0)
+        if (offset1 <= 0 || offset1 > int.MaxValue)
         {
-            errorMessage = "Please enter a valid positive integer for Y value [Y > 0].";
+            errorMessage = $"Offset 1 value must be > 0 and ≤ {int.MaxValue:N0}.";
             return;
         }
 
-        if (!int.TryParse(z, out Z) || Z <= 0)
+        if (offset2 <= 0 || offset2 > int.MaxValue)
         {
-            errorMessage = "Please enter a valid positive integer for Z value [Z > 0].";
+            errorMessage = $"Offset 2 value must be > 0 and ≤ {int.MaxValue:N0}.";
             return;
         }
+
+        // Safe to cast now - we've validated the ranges
+        int safeLimit = (int)limit;
+        int safeOffset1 = (int)offset1;
+        int safeOffset2 = (int)offset2;
 
         // Check memory constraints
-        int maxLimit = CalculateMaxLimit(MaxAllowedBytes, Y, Z);
-        long estimatedBytes = EstimateMemoryBytes(Limit, Y, Z);
+        long maxLimit = CalculateMaxLimit(MaxAllowedBytes, offset1, offset2);
+        long estimatedBytes = EstimateMemoryBytes(limit, offset1, offset2);
 
-        if (Limit > maxLimit)
+        if (limit > maxLimit)
         {
-            errorMessage = $"Run of {Limit:N0} would require ~{FormatBytes(estimatedBytes)}. " +
-                           $"With Y={Y} and Z={Z}, maximum allowed limit is {maxLimit:N0} " +
-                           $"(~{FormatBytes(MaxAllowedBytes)} budget).";
+            errorMessage = $"Run of {limit:N0} would require ~{FormatBytes(estimatedBytes)}. " +
+                        $"With Offset 1={offset1} and Offset 2={offset2}, maximum allowed limit is {maxLimit:N0} " +
+                        $"(~{FormatBytes(MaxAllowedBytes)} budget).";
             return;
         }
 
         runMessage = "Computing sequence...";
         StateHasChanged();
-        await Task.Delay(1); 
+        await Task.Delay(1);
 
-        // Pre-allocate and compute the full sequence without converting to and from strings
-        FibCache.Capacity = Limit + 1;
+        // Use safe int values for list operations
+        Output.Capacity = safeLimit + 1;
 
-        for (int i = 0; i <= Limit; i++)
+        for (int i = 0; i <= safeLimit; i++)
         {
-            if (i < Y || i < Z)
-                FibCache.Add(1);
+            if (i < safeOffset1 || i < safeOffset2)
+                Output.Add((i, BigInteger.One));
             else
-                FibCache.Add(FibCache[i - Y] + FibCache[i - Z]);
+                Output.Add((i, Output[i - safeOffset1].Value + Output[i - safeOffset2].Value));
         }
 
-        CurrentStart = 0;
-        runMessage = $"Computed {Limit:N0} terms of F(x) = F(x-{Y}) + F(x-{Z}). " +
-                     $"Memory used: ~{FormatBytes(estimatedBytes)}.";
-        showResults = true;
+        runMessage = $"Computed {limit:N0} terms of F(x) = F(x-{offset1}) + F(x-{offset2}). " +
+                    $"Memory used: ~{FormatBytes(estimatedBytes)}.";
     }
 }
