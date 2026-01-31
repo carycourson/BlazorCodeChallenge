@@ -173,17 +173,14 @@
 
     private string GetDisplayValue(BigInteger value)
     {
-        bool divByFirst = Divisor1 > 0 && value % Divisor1 == 0;
-        bool divBySecond = Divisor2 > 0 && value % Divisor2 == 0;
-
-        if (divByFirst && divBySecond)
+        if (i % Divisor1 == 0 && i % Divisor2 == 0)
             return Phrase1 + Phrase2;
-        if (divByFirst)
+        else if (i % Divisor1 == 0)
             return Phrase1;
-        if (divBySecond)
+        else if (i % Divisor2 == 0)
             return Phrase2;
-
-        return value.ToString("N0");
+        else
+            return i.ToString("N0");
     }
 
     private async Task RunLoop()
