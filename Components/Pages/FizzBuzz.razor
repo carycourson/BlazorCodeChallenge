@@ -193,17 +193,14 @@
 
     private string GetItemValue(BigInteger i)
     {
-        bool divByFirst = i % Divisor1 == 0;
-        bool divBySecond = i % Divisor2 == 0;
-
-        if (divByFirst && divBySecond)
+        if (i % Divisor1 == 0 && i % Divisor2 == 0)
             return Phrase1 + Phrase2;
-        if (divByFirst)
+        else if (i % Divisor1 == 0)
             return Phrase1;
-        if (divBySecond)
+        else if (i % Divisor2 == 0)
             return Phrase2;
-
-        return i.ToString("N0");
+        else
+            return i.ToString("N0");
     }
 
     private void RunLoop()
